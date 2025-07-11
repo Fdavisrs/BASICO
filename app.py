@@ -1,33 +1,34 @@
-import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import streamlit as st
 
-st.title("Gráfico Rápido com CSV")
+# Carregar o CSV
+st.title("Análise de Vendas - Gráfico Personalizado")
+uploaded_file = st.file_uploader("Faça upload do arquivo CSV", type="csv")
 
-# Upload
-uploaded_file = st.file_uploader("Envie seu arquivo CSV ou Excel", type=["csv", "xlsx"])
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
 
-if uploaded_file:
-    try:
-        if uploaded_file.name.endswith(".csv"):
-            df = pd.read_csv(uploaded_file, sep=None, engine='python')
-        else:
-            df = pd.read_excel(uploaded_file)
-        st.success("Arquivo carregado com sucesso!")
-        st.write("Prévia dos dados:", df.head())
+    # Detectar colunas numéricas e categóricas
+    numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
 
-        # Seleção de eixos
-        x_col = st.selectbox("Escolha o eixo X", df.columns)
-        y_col = st.selectbox("Escolha o eixo Y", df.select_dtypes(include='number').columns)
+    # Interface para seleção de eixos
+    x_axis = st.selectbox("Escolha o eixo X (agrupamento):", categorical_columns)
+    y_axis = st.selectbox("Escolha o eixo Y (valor numérico):", numeric_columns)
 
-        # Plot
-        if x_col and y_col:
-            fig, ax = plt.subplots()
-            df.groupby(x_col)[y_col].sum().plot(kind='bar', ax=ax)
-            ax.set_ylabel(y_col)
-            ax.set_xlabel(x_col)
-            ax.set_title(f"{y_col} por {x_col}")
-            st.pyplot(fig)
+    # Escolher tipo de gráfico
+    chart_type = st.radio("Tipo de gráfico:", ["Barra", "Linha", "Pizza"])
 
-    except Exception as e:
-        st.error(f"Erro ao processar o arquivo: {e}")
+    # Agrupamento e exibição
+    if x_axis and y_axis:
+        grouped = df.groupby(x_axis)[y_axis].sum().reset_index()
+
+        if chart_type == "Barra":
+            st.plotly_chart(px.bar(grouped, x=x_axis, y=y_axis, title=f"{y_axis} por {x_axis}"))
+        elif chart_type == "Linha":
+            st.plotly_chart(px.line(grouped, x=x_axis, y=y_axis, title=f"{y_axis} por {x_axis}"))
+        elif chart_type == "Pizza":
+            st.plotly_chart(px.pie(grouped, names=x_axis, values=y_axis, title=f"{y_axis} por {x_axis}"))
+    else:
+        st.warning("Por favor, selecione os eixos corretamente.")
